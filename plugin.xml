@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?eclipse version="3.4"?>
+<plugin>
+
+   <extension
+         point="org.eclipse.ui.commands">
+      <category
+            id="com.zyl.finder.commands.category"
+            name="样本类别">
+      </category>
+      <command
+            categoryId="com.zyl.finder.commands.category"
+            id="com.zyl.finder.commands.findViewById"
+            name="自动生成findViewById">
+      </command>
+   </extension>
+   <extension
+         point="org.eclipse.ui.handlers">
+      <handler
+            class="com.zyl.finder.handlers.FindViewByIdHandler"
+            commandId="com.zyl.finder.commands.findViewById">
+      </handler>
+   </extension>
+   <extension
+         point="org.eclipse.ui.bindings">
+      <key
+            commandId="com.zyl.finder.commands.findViewById"
+            contextId="org.eclipse.ui.contexts.window"
+            schemeId="org.eclipse.ui.defaultAcceleratorConfiguration"
+            sequence="M1+4">
+      </key>
+   </extension>
+   <extension
+         point="org.eclipse.ui.menus">
+      <menuContribution
+            allPopups="false"
+            locationURI="popup:org.eclipse.jdt.ui.PackageExplorer">
+         <command
+               commandId="com.zyl.finder.commands.findViewById"
+               icon="icons/sample.gif"
+               id="com.zyl.finder.menus.sampleCommand"
+               mnemonic="S">
+         </command>
+      </menuContribution>
+   </extension>
+
+</plugin>
