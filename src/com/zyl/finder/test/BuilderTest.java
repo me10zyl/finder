@@ -18,7 +18,7 @@ public class BuilderTest
 		try
 		{
 			Builder b = new Builder();
-			b.build(new File("X:\\ECLIPSE+ADT+SDK[Android]\\workspace\\Test"),new File("x:\\ECLIPSE+ADT+SDK[Android]\\workspace\\Test\\src\\com\\example\\test\\MainActivity.java"));
+			b.build(new File("f:/AndroidEclipse/workspace/DoToPlay/"),new File("f:/AndroidEclipse/workspace/DoToPlay/src/com/example/dotoplay/MyAdapter.java"));
 		} catch (IllegalArgumentException | IOException | ParserConfigurationException | SAXException e)
 		{
 			// TODO Auto-generated catch block

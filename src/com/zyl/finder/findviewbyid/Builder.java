@@ -21,46 +21,96 @@ import org.xml.sax.SAXException;
 
 public class Builder
 {
-	public String build(File file_project, File file_java) throws FileNotFoundException, IOException, IllegalArgumentException, ParserConfigurationException, SAXException
+	public static final int ACTIVITY = 0;
+	public static final int BASEADAPTER = 1;
+
+	public void build(File file_project, File file_java) throws FileNotFoundException, IOException, IllegalArgumentException, ParserConfigurationException, SAXException
 	{
-		StringBuilder sb = new StringBuilder();
 		ArrayList<String> arr_ids = new ArrayList<>();
 		String java = readFile(file_java);
+		findXmL(file_project, file_java, java);
+	}
+	private String findXmL(File file_project, File file_java, String java) throws FileNotFoundException, ParserConfigurationException, SAXException, IOException
+	{
 		String regex_setConentView = "(setContentView\\((\\w+\\.)*R\\.layout\\.(\\w+)\\);(\r?\n)*)";
-		Pattern p = Pattern.compile(regex_setConentView);
-		Matcher m = p.matcher(java);
+		String regex_inflate = "(=\\s*\\w+\\.inflate\\s*\\(R\\.layout\\.(\\w+),\\s*\\w+\\s*\\)\\s*;(\r?\n)*)";
+		Matcher m_setConetView = getMatcher(java, regex_setConentView);
+		Matcher m_inflate = getMatcher(java, regex_inflate);
 		String xml_name = null;
-		if (m.find())
+		if (m_setConetView.find())
 		{
-			xml_name = m.group(3) + ".xml";
+			xml_name = m_setConetView.group(3) + ".xml";
+			buildActivity(regex_setConentView, xml_name, file_project, file_java, java);
+		}
+		if (m_inflate.find())
+		{
+			xml_name = m_inflate.group(2) + ".xml";
+			buildBaseAdapter(regex_inflate, xml_name, file_project, file_java, java);
 		}
 		if (xml_name == null)
 		{
-			throw new IllegalArgumentException("木有找到setContentView...");
+			throw new IllegalArgumentException("木有找到setContentView|inflate...");
 		}
-		File file_xml = new File(file_project, "res/layout/" + xml_name);
-		ArrayList<View> views = getView(file_xml);
+		return xml_name;
+	}
+	private Matcher getMatcher(String matchStr, String regex)
+	{
+		Pattern p_setContentView = Pattern.compile(regex);
+		Matcher m_setConetView = p_setContentView.matcher(matchStr);
+		return m_setConetView;
+	}
+	private void buildBaseAdapter(String regex_inflate, String xml_name, File file_project, File file_java, String java) throws ParserConfigurationException, SAXException, IOException, FileNotFoundException
+	{
+		ArrayList<View> views = getViewByFileName(file_project, xml_name);
+		String ifcontentview = "\t\tif (convertView == null) \n\t\t{\n\t\t\tconvertView ";
+		String str_finds = "";
+		String viewholder = "\tpublic final class ViewHolder {\n";
+		for (int i = 0; i < views.size(); i++)
+		{
+			String type = views.get(i).getName();
+			String id = views.get(i).getId();
+			str_finds += "\t\t\t" + id + " = (" + type + ")findViewById(R.id." + id + ");\n";
+			viewholder += "\t\tpublic " + type + " " + id + "\n";
+		}
+		viewholder += "\t}\n}\n";
+		Matcher m = getMatcher(java, "if\\s*\\(convertView\\s*==\\s*null\\s*\\)");
+		if (m.find())// 已经生成过了
+		{
+			return;
+		}
+		String replaceStr = java.replaceAll("\\t*\\w*\\s*" + regex_inflate, ifcontentview + "$1" + str_finds + "\t\t\tconvertView.setTag(holder);\n\t\t}\n\t\telse\n\t\t{\n\t\t\tholder = (ViewHolder) convertView.getTag();\n\t\t}\n").replaceAll("\\}$", viewholder);
+		OutputStream os = new FileOutputStream(file_java);
+		os.write(replaceStr.getBytes());
+		os.close();
+	}
+	private void buildActivity(String regex_setConentView, String xml_name, File file_project, File file_java, String java) throws ParserConfigurationException, SAXException, IOException, FileNotFoundException
+	{
+		ArrayList<View> views = getViewByFileName(file_project, xml_name);
 		String str_declarings = "";
 		String str_finds = "";
 		for (int i = 0; i < views.size(); i++)
 		{
 			String type = views.get(i).getName();
-//			String variable = type.substring(0, 1).toLowerCase() + type.substring(1, type.length());
 			String id = views.get(i).getId();
 			String declaring = "\t" + type + " " + id + " = null;\n";
-			if(!java.contains(declaring))
+			if (!java.contains(declaring))
 			{
 				str_declarings += declaring;
-				str_finds += "\t\t" + id +" = (" +type+")findViewById(R.id."+id+");\n";
+				str_finds += "\t\t" + id + " = (" + type + ")findViewById(R.id." + id + ");\n";
 			}
 		}
-		String replaceStr = java.replaceFirst("(\\{(\r?\n)*)", "$1" + str_declarings).replaceFirst(regex_setConentView, "$1"+str_finds);
+		String replaceStr = java.replaceFirst("(\\{(\r?\n)*)", "$1" + str_declarings).replaceFirst(regex_setConentView, "$1" + str_finds);
 		OutputStream os = new FileOutputStream(file_java);
 		os.write(replaceStr.getBytes());
 		os.close();
-		return sb.toString();
 	}
-	private ArrayList<View> getView(File file_xml) throws ParserConfigurationException, SAXException, IOException
+	private ArrayList<View> getViewByFileName(File file_project, String xml_name) throws ParserConfigurationException, SAXException, IOException
+	{
+		File file_xml = new File(file_project, "res/layout/" + xml_name);
+		ArrayList<View> views = getViewByContent(file_xml);
+		return views;
+	}
+	private ArrayList<View> getViewByContent(File file_xml) throws ParserConfigurationException, SAXException, IOException
 	{
 		ArrayList<View> v = new ArrayList<View>();
 		DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
