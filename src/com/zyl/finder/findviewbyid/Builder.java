@@ -33,23 +33,47 @@ public class Builder
 	private String findXmL(File file_project, File file_java, String java) throws FileNotFoundException, ParserConfigurationException, SAXException, IOException
 	{
 		String regex_setConentView = "(setContentView\\((\\w+\\.)*R\\.layout\\.(\\w+)\\);(\r?\n)*)";
-		String regex_inflate = "(=\\s*\\w+\\.inflate\\s*\\(R\\.layout\\.(\\w+),\\s*\\w+\\s*\\)\\s*;(\r?\n)*)";
+		String regex_inflate = "[^\\w](\\w+\\.inflate\\s*\\((\\w+,)*R\\.layout\\.(\\w+),\\s*\\w+\\s*\\)\\s*;(\r?\n)*)";
+		String regex_getView = "public\\s*View\\s*getView\\(int\\s*position,\\s*View\\s*convertView,\\s*ViewGroup\\s*parent\\)";
+		String regex_onCreateView = "public\\s*View\\s*onCreateView";
 		Matcher m_setConetView = getMatcher(java, regex_setConentView);
 		Matcher m_inflate = getMatcher(java, regex_inflate);
+		Matcher m_getView = getMatcher(java, regex_getView);
+		Matcher m_onCreateView = getMatcher(java, regex_onCreateView);
 		String xml_name = null;
-		if (m_setConetView.find())
+		boolean isActivity = m_setConetView.find();
+		boolean isAdapter = m_getView.find();
+		boolean isFragment = m_onCreateView.find();
+		if (isActivity)
 		{
 			xml_name = m_setConetView.group(3) + ".xml";
 			buildActivity(regex_setConentView, xml_name, file_project, file_java, java);
 		}
-		if (m_inflate.find())
+		if (isAdapter)
 		{
-			xml_name = m_inflate.group(2) + ".xml";
-			buildBaseAdapter(regex_inflate, xml_name, file_project, file_java, java);
+			if (m_inflate.find())
+			{
+				xml_name = m_inflate.group(3) + ".xml";
+				buildBaseAdapter(regex_inflate, xml_name, file_project, file_java, java);
+			} else
+			{
+				throw new IllegalArgumentException("木有找到inflate...");
+			}
+		}
+		if (isFragment)
+		{
+			if (m_inflate.find())
+			{
+				xml_name = m_inflate.group(3) + ".xml";
+				buildFragment(regex_inflate, xml_name, file_project, file_java, java);
+			} else
+			{
+				throw new IllegalArgumentException("木有找到inflate...");
+			}
 		}
 		if (xml_name == null)
 		{
-			throw new IllegalArgumentException("木有找到setContentView|inflate...");
+			throw new IllegalArgumentException("木有找到setContentView|getView...");
 		}
 		return xml_name;
 	}
@@ -59,10 +83,31 @@ public class Builder
 		Matcher m_setConetView = p_setContentView.matcher(matchStr);
 		return m_setConetView;
 	}
+	private void buildFragment(String regex_inflate, String xml_name, File file_project, File file_java, String java) throws ParserConfigurationException, SAXException, IOException, FileNotFoundException
+	{
+		ArrayList<View> views = getViewByFileName(file_project, xml_name);
+		String str_declarings = "";
+		String str_finds = "";
+		for (int i = 0; i < views.size(); i++)
+		{
+			String type = views.get(i).getName();
+			String id = views.get(i).getId();
+			String declaring = "\t" + type + " " + id + " = null;\n";
+			if (!java.contains(declaring))
+			{
+				str_declarings += declaring;
+				str_finds += "\t\t" + id + " = (" + type + ")v.findViewById(R.id." + id + ");\n";
+			}
+		}
+		String replaceStr = java.replaceFirst("(\\{(\r?\n)*)", "$1" + str_declarings).replaceFirst(".*" + regex_inflate, "\t\tView v = $1" + str_finds);
+		OutputStream os = new FileOutputStream(file_java);
+		os.write(replaceStr.getBytes());
+		os.close();
+	}
 	private void buildBaseAdapter(String regex_inflate, String xml_name, File file_project, File file_java, String java) throws ParserConfigurationException, SAXException, IOException, FileNotFoundException
 	{
 		ArrayList<View> views = getViewByFileName(file_project, xml_name);
-		String ifcontentview = "\t\tif (convertView == null) \n\t\t{\n\t\t\tconvertView ";
+		String ifcontentview = "\t\tif (convertView == null) \n\t\t{\n\t\t\tconvertView = ";
 		String str_finds = "";
 		String viewholder = "\tpublic final class ViewHolder {\n";
 		for (int i = 0; i < views.size(); i++)
@@ -78,7 +123,7 @@ public class Builder
 		{
 			return;
 		}
-		String replaceStr = java.replaceAll("\\t*\\w*\\s*" + regex_inflate, ifcontentview + "$1" + str_finds + "\t\t\tconvertView.setTag(holder);\n\t\t}\n\t\telse\n\t\t{\n\t\t\tholder = (ViewHolder) convertView.getTag();\n\t\t}\n").replaceAll("\\}$", viewholder);
+		String replaceStr = java.replaceAll(".*" + regex_inflate, ifcontentview + "$1" + str_finds + "\t\t\tconvertView.setTag(holder);\n\t\t}\n\t\telse\n\t\t{\n\t\t\tholder = (ViewHolder) convertView.getTag();\n\t\t}\n").replaceAll("\\}$", viewholder);
 		OutputStream os = new FileOutputStream(file_java);
 		os.write(replaceStr.getBytes());
 		os.close();

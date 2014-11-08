@@ -2,7 +2,7 @@ Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
 Bundle-Name: Finder
 Bundle-SymbolicName: com.zyl.finder;singleton:=true
-Bundle-Version: 1.0.1
+Bundle-Version: 1.0.6
 Bundle-Activator: com.zyl.finder.Activator
 Bundle-Vendor: ZYL
 Require-Bundle: org.eclipse.ui,
