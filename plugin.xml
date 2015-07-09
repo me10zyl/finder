@@ -30,11 +30,13 @@
             sequence="M1+4">
       </key>
    </extension>
+   <!--
    <extension
          point="org.eclipse.ui.menus">
       <menuContribution
             allPopups="false"
-            locationURI="popup:org.eclipse.jdt.ui.PackageExplorer">
+            locationURI="popup:org.eclipse.jdt.ui.PackageExplorer"
+            >
          <command
                commandId="com.zyl.finder.commands.findViewById"
                icon="icons/sample.gif"
@@ -42,6 +44,28 @@
                mnemonic="S">
          </command>
       </menuContribution>
+   </extension>-->
+   <extension
+         point="org.eclipse.ui.popupMenus">
+      <objectContribution
+            id="com.zyl.finder.contribution1"
+            objectClass="org.eclipse.jdt.internal.core.CompilationUnit">
+         <menu
+               id="com.zyl.finder.menu1"
+               label="FindViewById"
+               path="additions">
+            <separator
+                  name="group1">
+            </separator>
+         </menu>
+         <action
+               class="com.zyl.finder.popup.actions.FindViewByIdAction"
+               enablesFor="1"
+               id="com.zyl.finder.newAction"
+               label="Find View By Id"
+               menubarPath="additions">
+         </action>
+      </objectContribution>
    </extension>
 
 </plugin>
